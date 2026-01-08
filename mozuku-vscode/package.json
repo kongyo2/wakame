@@ -1,0 +1,155 @@
+{
+  "name": "mozuku-lsp",
+  "displayName": "MoZuku Japanese Linter",
+  "description": "Japanese text analysis and proofreading LSP - detects grammar issues like duplicate particles, ra-dropping, and comma limits",
+  "version": "0.1.0",
+  "publisher": "mozuku",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "japanese",
+    "日本語",
+    "linter",
+    "grammar",
+    "proofreading",
+    "校正"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/client/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "japanese",
+        "aliases": ["Japanese", "日本語"],
+        "extensions": [".ja.txt", ".ja.md"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "MoZuku Japanese Linter",
+      "properties": {
+        "mozuku.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable MoZuku Japanese linter"
+        },
+        "mozuku.targetLanguages": {
+          "type": "array",
+          "default": ["plaintext", "markdown", "japanese", "latex", "html"],
+          "items": { "type": "string" },
+          "description": "List of language IDs to analyze"
+        },
+        "mozuku.minJapaneseRatio": {
+          "type": "number",
+          "default": 0.1,
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Minimum ratio of Japanese characters required for analysis"
+        },
+        "mozuku.rules.commaLimit": {
+          "type": "boolean",
+          "default": true,
+          "description": "一文で使用できる読点「、」を制限する"
+        },
+        "mozuku.rules.commaLimitMax": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "description": "一文で許容する読点「、」の最大数"
+        },
+        "mozuku.rules.adversativeGa": {
+          "type": "boolean",
+          "default": true,
+          "description": "逆接の接続助詞「が」が同一文で複数回出現する場合に警告する"
+        },
+        "mozuku.rules.adversativeGaMax": {
+          "type": "number",
+          "default": 1,
+          "minimum": 1,
+          "description": "一文内で許容する逆接「が」の最大回数"
+        },
+        "mozuku.rules.duplicateParticle": {
+          "type": "boolean",
+          "default": true,
+          "description": "同じ助詞が連続する場合に警告する"
+        },
+        "mozuku.rules.adjacentParticles": {
+          "type": "boolean",
+          "default": true,
+          "description": "助詞が隣接して連続する場合に警告する"
+        },
+        "mozuku.rules.conjunctionRepeat": {
+          "type": "boolean",
+          "default": true,
+          "description": "同じ接続詞が連続する場合に警告する"
+        },
+        "mozuku.rules.raDropping": {
+          "type": "boolean",
+          "default": true,
+          "description": "ら抜き言葉を検出する"
+        }
+      }
+    },
+    "configurationDefaults": {
+      "editor.semanticHighlighting.enabled": true,
+      "editor.semanticTokenColorCustomizations": {
+        "rules": {
+          "noun": "#c8c8c8",
+          "verb": "#569cd6",
+          "adjective": "#4fc1ff",
+          "adverb": "#9cdcfe",
+          "particle": "#d16969",
+          "auxiliary": "#87CEEB",
+          "conjunction": "#d7ba7d",
+          "symbol": "#808080",
+          "interjection": "#b5cea8",
+          "prefix": "#c8c8c8",
+          "suffix": "#c8c8c8"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "mozuku.analyzeDocument",
+        "title": "MoZuku: Analyze Current Document"
+      },
+      {
+        "command": "mozuku.showTokenInfo",
+        "title": "MoZuku: Show Token Information"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src --deny-warnings",
+    "test": "vitest run",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "kuromoji": "^0.1.2",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
+  },
+  "devDependencies": {
+    "@types/kuromoji": "^0.1.3",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.20.0",
+    "oxlint": "^0.2.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  }
+}
