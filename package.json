@@ -3,8 +3,21 @@
   "displayName": "Wakame Japanese Linter",
   "description": "Japanese text analysis and proofreading LSP - detects grammar issues like duplicate particles, ra-dropping, and comma limits. Includes Wikipedia integration and semantic highlighting. Inspired by MoZuku, implemented in TypeScript with kuromoji.js.",
   "version": "0.1.0",
-  "publisher": "wakame",
+  "publisher": "Kongyo2",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kongyo2/wakame"
+  },
+  "homepage": "https://github.com/Kongyo2/wakame#readme",
+  "bugs": {
+    "url": "https://github.com/Kongyo2/wakame/issues"
+  },
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
