@@ -133,8 +133,11 @@
     "build": "node esbuild.config.mjs",
     "watch": "node esbuild.config.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint src --deny-warnings",
+    "lint": "oxlint src --quiet",
+    "lint:strict": "oxlint src --deny-warnings",
+    "lint:fix": "oxlint src --fix",
     "test": "vitest run",
+    "check": "npm run typecheck && npm run lint:strict",
     "package": "vsce package --no-dependencies"
   },
   "dependencies": {
