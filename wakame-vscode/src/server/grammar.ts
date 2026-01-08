@@ -1,9 +1,9 @@
 /**
  * Grammar checking rules for Japanese text
- * Ported from MoZuku C++ implementation
+ * Inspired by MoZuku (https://github.com/t3tra-dev/MoZuku)
  */
 
-import type { Token, Sentence, DiagnosticInfo, MozukuConfig } from '../shared/types.js';
+import type { Token, Sentence, DiagnosticInfo, WakameConfig } from '../shared/types.js';
 
 /**
  * Convert byte offset to line/character position
@@ -111,7 +111,7 @@ function countCommas(text: string): number {
 function checkCommaLimit(
   text: string,
   sentences: Sentence[],
-  config: MozukuConfig
+  config: WakameConfig
 ): DiagnosticInfo[] {
   if (!config.rules.commaLimit) return [];
 
@@ -127,7 +127,7 @@ function checkCommaLimit(
         message: `一文に使用できる読点「、」は最大${limit}個までです (現在${commaCount}個)`,
         severity: 2,
         code: 'comma-limit',
-        source: 'mozuku',
+        source: 'wakame',
       });
     }
   }
@@ -142,7 +142,7 @@ function checkCommaLimit(
 function checkAdversativeGa(
   text: string,
   sentences: Sentence[],
-  config: MozukuConfig
+  config: WakameConfig
 ): DiagnosticInfo[] {
   if (!config.rules.adversativeGa) return [];
 
@@ -164,7 +164,7 @@ function checkAdversativeGa(
         message: `逆接の接続助詞「が」が同一文で${maxCount + 1}回以上使われています (${count}回)`,
         severity: 2,
         code: 'adversative-ga',
-        source: 'mozuku',
+        source: 'wakame',
       });
     }
   }
@@ -179,7 +179,7 @@ function checkAdversativeGa(
 function checkDuplicateParticle(
   text: string,
   sentences: Sentence[],
-  config: MozukuConfig
+  config: WakameConfig
 ): DiagnosticInfo[] {
   if (!config.rules.duplicateParticle) return [];
 
@@ -207,7 +207,7 @@ function checkDuplicateParticle(
             message: `同じ助詞「${token.surface}」が連続しています`,
             severity: 2,
             code: 'duplicate-particle',
-            source: 'mozuku',
+            source: 'wakame',
           });
         }
       } else {
@@ -230,7 +230,7 @@ function checkDuplicateParticle(
 function checkAdjacentParticles(
   text: string,
   sentences: Sentence[],
-  config: MozukuConfig
+  config: WakameConfig
 ): DiagnosticInfo[] {
   if (!config.rules.adjacentParticles) return [];
 
@@ -262,7 +262,7 @@ function checkAdjacentParticles(
             message: '助詞が連続して使われています',
             severity: 2,
             code: 'adjacent-particles',
-            source: 'mozuku',
+            source: 'wakame',
           });
         }
       } else {
@@ -287,7 +287,7 @@ function checkAdjacentParticles(
 function checkConjunctionRepeat(
   text: string,
   sentences: Sentence[],
-  config: MozukuConfig
+  config: WakameConfig
 ): DiagnosticInfo[] {
   if (!config.rules.conjunctionRepeat) return [];
 
@@ -322,7 +322,7 @@ function checkConjunctionRepeat(
           message: `同じ接続詞「${token.surface}」が連続しています`,
           severity: 2,
           code: 'conjunction-repeat',
-          source: 'mozuku',
+          source: 'wakame',
         });
       }
     } else {
@@ -343,7 +343,7 @@ function checkConjunctionRepeat(
 function checkRaDropping(
   text: string,
   sentences: Sentence[],
-  config: MozukuConfig
+  config: WakameConfig
 ): DiagnosticInfo[] {
   if (!config.rules.raDropping) return [];
 
@@ -360,7 +360,7 @@ function checkRaDropping(
           message,
           severity: 2,
           code: 'ra-dropping',
-          source: 'mozuku',
+          source: 'wakame',
         });
       }
     }
@@ -378,7 +378,7 @@ function checkRaDropping(
           message,
           severity: 2,
           code: 'ra-dropping',
-          source: 'mozuku',
+          source: 'wakame',
         });
       }
       prevToken = token;
@@ -394,7 +394,7 @@ function checkRaDropping(
 export function checkGrammar(
   text: string,
   sentences: Sentence[],
-  config: MozukuConfig
+  config: WakameConfig
 ): DiagnosticInfo[] {
   const diagnostics: DiagnosticInfo[] = [];
 

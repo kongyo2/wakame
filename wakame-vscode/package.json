@@ -1,9 +1,9 @@
 {
-  "name": "mozuku-lsp",
-  "displayName": "MoZuku Japanese Linter",
-  "description": "Japanese text analysis and proofreading LSP - detects grammar issues like duplicate particles, ra-dropping, and comma limits. Includes Wikipedia integration and semantic highlighting.",
+  "name": "wakame-lsp",
+  "displayName": "Wakame Japanese Linter",
+  "description": "Japanese text analysis and proofreading LSP - detects grammar issues like duplicate particles, ra-dropping, and comma limits. Includes Wikipedia integration and semantic highlighting. Inspired by MoZuku, implemented in TypeScript with kuromoji.js.",
   "version": "0.1.0",
-  "publisher": "mozuku",
+  "publisher": "wakame",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
@@ -37,27 +37,27 @@
     ],
     "configuration": {
       "type": "object",
-      "title": "MoZuku Japanese Linter",
+      "title": "Wakame Japanese Linter",
       "properties": {
-        "mozuku.enable": {
+        "wakame.enable": {
           "type": "boolean",
           "default": true,
-          "description": "Enable/disable MoZuku Japanese linter"
+          "description": "Enable/disable Wakame Japanese linter"
         },
-        "mozuku.targetLanguages": {
+        "wakame.targetLanguages": {
           "type": "array",
           "default": ["plaintext", "markdown", "japanese", "latex", "html", "javascript", "typescript", "javascriptreact", "typescriptreact", "python", "rust", "c", "cpp"],
           "items": { "type": "string" },
           "description": "List of language IDs to analyze"
         },
-        "mozuku.minJapaneseRatio": {
+        "wakame.minJapaneseRatio": {
           "type": "number",
           "default": 0.1,
           "minimum": 0.0,
           "maximum": 1.0,
           "description": "Minimum ratio of Japanese characters required for analysis"
         },
-        "mozuku.warningMinSeverity": {
+        "wakame.warningMinSeverity": {
           "type": "number",
           "default": 2,
           "minimum": 1,
@@ -66,97 +66,97 @@
           "enumDescriptions": ["Error only", "Warning and above", "Information and above", "All including hints"],
           "description": "Minimum severity level for warnings (1=Error, 2=Warning, 3=Information, 4=Hint)"
         },
-        "mozuku.enableWikipedia": {
+        "wakame.enableWikipedia": {
           "type": "boolean",
           "default": true,
           "description": "Enable Wikipedia summary in hover information for nouns"
         },
-        "mozuku.rules.commaLimit": {
+        "wakame.rules.commaLimit": {
           "type": "boolean",
           "default": true,
           "description": "一文で使用できる読点「、」を制限する"
         },
-        "mozuku.rules.commaLimitMax": {
+        "wakame.rules.commaLimitMax": {
           "type": "number",
           "default": 3,
           "minimum": 1,
           "description": "一文で許容する読点「、」の最大数"
         },
-        "mozuku.rules.adversativeGa": {
+        "wakame.rules.adversativeGa": {
           "type": "boolean",
           "default": true,
           "description": "逆接の接続助詞「が」が同一文で複数回出現する場合に警告する"
         },
-        "mozuku.rules.adversativeGaMax": {
+        "wakame.rules.adversativeGaMax": {
           "type": "number",
           "default": 1,
           "minimum": 1,
           "description": "一文内で許容する逆接「が」の最大回数"
         },
-        "mozuku.rules.duplicateParticle": {
+        "wakame.rules.duplicateParticle": {
           "type": "boolean",
           "default": true,
           "description": "同じ助詞が連続する場合に警告する (二重助詞)"
         },
-        "mozuku.rules.duplicateParticleMaxRepeat": {
+        "wakame.rules.duplicateParticleMaxRepeat": {
           "type": "number",
           "default": 1,
           "minimum": 1,
           "description": "同じ助詞が連続で許容される最大回数"
         },
-        "mozuku.rules.adjacentParticles": {
+        "wakame.rules.adjacentParticles": {
           "type": "boolean",
           "default": true,
           "description": "助詞が隣接して連続する場合に警告する"
         },
-        "mozuku.rules.adjacentParticlesMaxRepeat": {
+        "wakame.rules.adjacentParticlesMaxRepeat": {
           "type": "number",
           "default": 1,
           "minimum": 1,
           "description": "同種の助詞が隣接して許容される最大回数"
         },
-        "mozuku.rules.conjunctionRepeat": {
+        "wakame.rules.conjunctionRepeat": {
           "type": "boolean",
           "default": true,
           "description": "同じ接続詞が連続する場合に警告する (改行でリセット)"
         },
-        "mozuku.rules.conjunctionRepeatMax": {
+        "wakame.rules.conjunctionRepeatMax": {
           "type": "number",
           "default": 1,
           "minimum": 1,
           "description": "同じ接続詞が連続で許容される最大回数"
         },
-        "mozuku.rules.raDropping": {
+        "wakame.rules.raDropping": {
           "type": "boolean",
           "default": true,
           "description": "ら抜き言葉を検出する"
         },
-        "mozuku.warnings.particleDuplicate": {
+        "wakame.warnings.particleDuplicate": {
           "type": "boolean",
           "default": true,
           "description": "Detect duplicate particles (二重助詞) like をを, がが"
         },
-        "mozuku.warnings.particleSequence": {
+        "wakame.warnings.particleSequence": {
           "type": "boolean",
           "default": true,
           "description": "Detect invalid particle sequences like がは, をは"
         },
-        "mozuku.warnings.particleMismatch": {
+        "wakame.warnings.particleMismatch": {
           "type": "boolean",
           "default": true,
           "description": "Detect particle-verb mismatches (experimental)"
         },
-        "mozuku.warnings.sentenceStructure": {
+        "wakame.warnings.sentenceStructure": {
           "type": "boolean",
           "default": false,
           "description": "Detect sentence structure issues (experimental)"
         },
-        "mozuku.warnings.styleConsistency": {
+        "wakame.warnings.styleConsistency": {
           "type": "boolean",
           "default": false,
           "description": "Detect style inconsistency (experimental)"
         },
-        "mozuku.warnings.redundancy": {
+        "wakame.warnings.redundancy": {
           "type": "boolean",
           "default": false,
           "description": "Detect redundant expressions (experimental)"
@@ -186,12 +186,12 @@
     },
     "commands": [
       {
-        "command": "mozuku.analyzeDocument",
-        "title": "MoZuku: Analyze Current Document"
+        "command": "wakame.analyzeDocument",
+        "title": "Wakame: Analyze Current Document"
       },
       {
-        "command": "mozuku.showTokenInfo",
-        "title": "MoZuku: Show Token Information"
+        "command": "wakame.showTokenInfo",
+        "title": "Wakame: Show Token Information"
       }
     ],
     "semanticTokenTypes": [

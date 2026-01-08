@@ -30,7 +30,7 @@ export async function fetchWikipediaSummary(
 
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'MoZuku-VSCode/0.1.0 (Japanese LSP Extension)',
+        'User-Agent': 'Wakame-VSCode/0.1.0 (Japanese LSP Extension)',
         Accept: 'application/json',
       },
     });

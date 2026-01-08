@@ -1,5 +1,5 @@
 /**
- * esbuild configuration for MoZuku VSCode Extension
+ * esbuild configuration for Wakame VSCode Extension
  */
 
 import * as esbuild from 'esbuild';

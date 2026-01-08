@@ -1,5 +1,5 @@
 /**
- * MoZuku VSCode Extension
+ * Wakame VSCode Extension
  * Japanese text analysis and proofreading
  */
 
@@ -54,33 +54,33 @@ export function activate(context: vscode.ExtensionContext): void {
   const clientOptions: LanguageClientOptions = {
     documentSelector,
     synchronize: {
-      configurationSection: 'mozuku',
+      configurationSection: 'wakame',
     },
-    outputChannelName: 'MoZuku Japanese Linter',
+    outputChannelName: 'Wakame Japanese Linter',
   };
 
   // Create the language client
   client = new LanguageClient(
-    'mozuku',
-    'MoZuku Japanese Linter',
+    'wakame',
+    'Wakame Japanese Linter',
     serverOptions,
     clientOptions
   );
 
   // Register commands
   const analyzeCommand = vscode.commands.registerCommand(
-    'mozuku.analyzeDocument',
+    'wakame.analyzeDocument',
     async () => {
       const editor = vscode.window.activeTextEditor;
       if (editor) {
         await vscode.commands.executeCommand('editor.action.triggerSuggest');
-        vscode.window.showInformationMessage('MoZuku: Document analysis triggered');
+        vscode.window.showInformationMessage('Wakame: Document analysis triggered');
       }
     }
   );
 
   const showTokenInfoCommand = vscode.commands.registerCommand(
-    'mozuku.showTokenInfo',
+    'wakame.showTokenInfo',
     async () => {
       const editor = vscode.window.activeTextEditor;
       if (editor) {
@@ -100,7 +100,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Show welcome message
   vscode.window.showInformationMessage(
-    'MoZuku Japanese Linter is now active. Open a document with Japanese text to start analyzing.'
+    'Wakame Japanese Linter is now active. Open a document with Japanese text to start analyzing.'
   );
 }
 

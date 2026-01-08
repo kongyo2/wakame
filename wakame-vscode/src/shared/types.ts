@@ -1,5 +1,5 @@
 /**
- * MoZuku shared type definitions
+ * Wakame shared type definitions
  */
 
 export interface Token {
@@ -95,7 +95,7 @@ export interface ContentRange {
   type: 'html-text' | 'latex-text' | 'comment';
 }
 
-export interface MozukuConfig {
+export interface WakameConfig {
   enable: boolean;
   targetLanguages: string[];
   minJapaneseRatio: number;
@@ -124,7 +124,7 @@ export interface MozukuConfig {
   };
 }
 
-export const defaultConfig: MozukuConfig = {
+export const defaultConfig: WakameConfig = {
   enable: true,
   targetLanguages: [
     'plaintext',

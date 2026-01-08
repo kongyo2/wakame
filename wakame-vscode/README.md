@@ -1,6 +1,8 @@
-# MoZuku Japanese Linter
+# Wakame Japanese Linter
 
 日本語文章の解析・校正を行うVSCode拡張機能です。インストールするだけで動作します。
+
+> [MoZuku](https://github.com/t3tra-dev/MoZuku)にインスパイアされ、TypeScript + kuromoji.jsで再実装しました。
 
 ## 機能
 
@@ -31,7 +33,7 @@
 1. VSCode拡張機能からインストール
 2. または `.vsix` ファイルからインストール:
    ```bash
-   code --install-extension mozuku-lsp-0.1.0.vsix
+   code --install-extension wakame-lsp-0.1.0.vsix
    ```
 
 ## 設定
@@ -40,17 +42,17 @@
 
 ```json
 {
-  "mozuku.enable": true,
-  "mozuku.targetLanguages": ["plaintext", "markdown", "japanese", "latex", "html"],
-  "mozuku.minJapaneseRatio": 0.1,
-  "mozuku.rules.commaLimit": true,
-  "mozuku.rules.commaLimitMax": 3,
-  "mozuku.rules.adversativeGa": true,
-  "mozuku.rules.adversativeGaMax": 1,
-  "mozuku.rules.duplicateParticle": true,
-  "mozuku.rules.adjacentParticles": true,
-  "mozuku.rules.conjunctionRepeat": true,
-  "mozuku.rules.raDropping": true
+  "wakame.enable": true,
+  "wakame.targetLanguages": ["plaintext", "markdown", "japanese", "latex", "html"],
+  "wakame.minJapaneseRatio": 0.1,
+  "wakame.rules.commaLimit": true,
+  "wakame.rules.commaLimitMax": 3,
+  "wakame.rules.adversativeGa": true,
+  "wakame.rules.adversativeGaMax": 1,
+  "wakame.rules.duplicateParticle": true,
+  "wakame.rules.adjacentParticles": true,
+  "wakame.rules.conjunctionRepeat": true,
+  "wakame.rules.raDropping": true
 }
 ```
 

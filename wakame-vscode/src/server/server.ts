@@ -1,5 +1,5 @@
 /**
- * MoZuku LSP Server
+ * Wakame LSP Server
  * Japanese text analysis and proofreading
  */
 
@@ -28,7 +28,7 @@ import {
 } from './analyzer.js';
 import { checkGrammar } from './grammar.js';
 import { fetchWikipediaSummary } from './wikipedia.js';
-import type { MozukuConfig, Token } from '../shared/types.js';
+import type { WakameConfig, Token } from '../shared/types.js';
 import { defaultConfig } from '../shared/types.js';
 
 // Create LSP connection
@@ -38,11 +38,11 @@ const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 
 // Configuration
-let globalConfig: MozukuConfig = { ...defaultConfig };
+let globalConfig: WakameConfig = { ...defaultConfig };
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 
-// Semantic token types for Japanese POS (matching MoZuku)
+// Semantic token types for Japanese POS
 const tokenTypes = [
   'noun', // 名詞
   'verb', // 動詞
@@ -58,7 +58,7 @@ const tokenTypes = [
   'unknown', // 未知語
 ];
 
-// Token modifiers (matching MoZuku)
+// Token modifiers
 const tokenModifiers = ['proper', 'numeric', 'kana', 'kanji'];
 
 const legend: SemanticTokensLegend = {
@@ -149,9 +149,9 @@ connection.onInitialized(async () => {
 
   // Initialize kuromoji tokenizer
   try {
-    connection.console.log('MoZuku: Initializing Japanese tokenizer...');
+    connection.console.log('Wakame: Initializing Japanese tokenizer...');
     await initializeTokenizer();
-    connection.console.log('MoZuku: Tokenizer initialized successfully');
+    connection.console.log('Wakame: Tokenizer initialized successfully');
 
     // Validate all open documents
     for (const doc of documents.all()) {
@@ -159,7 +159,7 @@ connection.onInitialized(async () => {
     }
   } catch (error) {
     connection.console.error(
-      `MoZuku: Failed to initialize tokenizer: ${error}`
+      `Wakame: Failed to initialize tokenizer: ${error}`
     );
   }
 });
@@ -171,7 +171,7 @@ connection.onDidChangeConfiguration(async (change) => {
   if (hasConfigurationCapability) {
     globalConfig = { ...defaultConfig };
   } else {
-    globalConfig = (change.settings?.mozuku || defaultConfig) as MozukuConfig;
+    globalConfig = (change.settings?.wakame || defaultConfig) as WakameConfig;
   }
 
   // Revalidate all open documents
@@ -183,14 +183,14 @@ connection.onDidChangeConfiguration(async (change) => {
 /**
  * Get document-specific configuration
  */
-async function getDocumentConfig(uri: string): Promise<MozukuConfig> {
+async function getDocumentConfig(uri: string): Promise<WakameConfig> {
   if (!hasConfigurationCapability) {
     return globalConfig;
   }
 
   const result = await connection.workspace.getConfiguration({
     scopeUri: uri,
-    section: 'mozuku',
+    section: 'wakame',
   });
 
   return {
@@ -376,7 +376,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
       diagnostics: allDiagnostics,
     });
   } catch (error) {
-    connection.console.error(`MoZuku: Analysis error: ${error}`);
+    connection.console.error(`Wakame: Analysis error: ${error}`);
   }
 }
 
@@ -447,7 +447,7 @@ connection.onHover(async (params) => {
       }
     }
   } catch (error) {
-    connection.console.error(`MoZuku: Hover error: ${error}`);
+    connection.console.error(`Wakame: Hover error: ${error}`);
   }
 
   return null;
@@ -505,7 +505,7 @@ connection.languages.semanticTokens.on(async (params) => {
 
     return builder.build();
   } catch (error) {
-    connection.console.error(`MoZuku: Semantic tokens error: ${error}`);
+    connection.console.error(`Wakame: Semantic tokens error: ${error}`);
     return { data: [] };
   }
 });
@@ -563,7 +563,7 @@ connection.languages.semanticTokens.onRange(async (params) => {
 
     return builder.build();
   } catch (error) {
-    connection.console.error(`MoZuku: Semantic tokens range error: ${error}`);
+    connection.console.error(`Wakame: Semantic tokens range error: ${error}`);
     return { data: [] };
   }
 });
