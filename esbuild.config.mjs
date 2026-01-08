@@ -36,11 +36,50 @@ const serverOptions = {
   external: ['vscode'],
 };
 
+/**
+ * Copy Tree-sitter WASM files to dist/wasm
+ */
+function copyWasmFiles() {
+  const wasmDir = 'dist/wasm';
+  fs.mkdirSync(wasmDir, { recursive: true });
+
+  // WASM files to copy
+  const wasmFiles = [
+    // Tree-sitter runtime
+    { src: 'node_modules/web-tree-sitter/web-tree-sitter.wasm', dest: 'web-tree-sitter.wasm' },
+    // Language grammars
+    { src: 'node_modules/tree-sitter-javascript/tree-sitter-javascript.wasm', dest: 'tree-sitter-javascript.wasm' },
+    { src: 'node_modules/tree-sitter-typescript/tree-sitter-typescript.wasm', dest: 'tree-sitter-typescript.wasm' },
+    { src: 'node_modules/tree-sitter-typescript/tree-sitter-tsx.wasm', dest: 'tree-sitter-tsx.wasm' },
+    { src: 'node_modules/tree-sitter-python/tree-sitter-python.wasm', dest: 'tree-sitter-python.wasm' },
+    { src: 'node_modules/tree-sitter-c/tree-sitter-c.wasm', dest: 'tree-sitter-c.wasm' },
+    { src: 'node_modules/tree-sitter-html/tree-sitter-html.wasm', dest: 'tree-sitter-html.wasm' },
+  ];
+
+  let copiedCount = 0;
+  for (const { src, dest } of wasmFiles) {
+    try {
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, path.join(wasmDir, dest));
+        copiedCount++;
+      } else {
+        console.warn(`WASM file not found: ${src}`);
+      }
+    } catch (error) {
+      console.warn(`Failed to copy ${src}: ${error.message}`);
+    }
+  }
+  console.log(`Copied ${copiedCount}/${wasmFiles.length} Tree-sitter WASM files`);
+}
+
 async function build() {
   try {
     // Ensure dist directories exist
     fs.mkdirSync('dist/client', { recursive: true });
     fs.mkdirSync('dist/server', { recursive: true });
+
+    // Copy Tree-sitter WASM files
+    copyWasmFiles();
 
     if (isWatch) {
       // Watch mode
@@ -64,3 +103,4 @@ async function build() {
 }
 
 build();
+

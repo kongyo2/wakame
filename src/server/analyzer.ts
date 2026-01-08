@@ -1,5 +1,6 @@
 /**
  * Japanese text analyzer using kuromoji
+ * With Tree-sitter based AST analysis for high-precision comment extraction
  */
 
 import kuromoji from 'kuromoji';
@@ -11,6 +12,16 @@ import type {
   TokenModifiers,
   CommentRange,
 } from '../shared/types.js';
+
+// Re-export Tree-sitter functions
+export {
+  initializeTreeSitter,
+  extractCommentsWithTreeSitter,
+  extractHtmlContentWithTreeSitter,
+  isTreeSitterReady,
+  isLanguageSupported,
+  getSupportedLanguages,
+} from './treeSitterExtractor.js';
 
 type KuromojiToken = kuromoji.IpadicFeatures;
 type Tokenizer = kuromoji.Tokenizer<KuromojiToken>;

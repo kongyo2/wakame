@@ -25,6 +25,12 @@ import {
   extractComments,
   extractHtmlContent,
   extractLatexContent,
+  // Tree-sitter functions
+  initializeTreeSitter,
+  extractCommentsWithTreeSitter,
+  extractHtmlContentWithTreeSitter,
+  isTreeSitterReady,
+  isLanguageSupported,
 } from './analyzer.js';
 import { checkGrammar } from './grammar.js';
 import { fetchWikipediaSummary } from './wikipedia.js';
@@ -152,15 +158,26 @@ connection.onInitialized(async () => {
     connection.console.log('Wakame: Initializing Japanese tokenizer...');
     await initializeTokenizer();
     connection.console.log('Wakame: Tokenizer initialized successfully');
-
-    // Validate all open documents
-    for (const doc of documents.all()) {
-      await validateTextDocument(doc);
-    }
   } catch (error) {
     connection.console.error(
       `Wakame: Failed to initialize tokenizer: ${error}`
     );
+  }
+
+  // Initialize Tree-sitter for AST-based comment extraction
+  try {
+    connection.console.log('Wakame: Initializing Tree-sitter parser...');
+    await initializeTreeSitter();
+    connection.console.log('Wakame: Tree-sitter initialized successfully');
+  } catch (error) {
+    connection.console.warn(
+      `Wakame: Tree-sitter initialization failed, falling back to regex: ${error}`
+    );
+  }
+
+  // Validate all open documents
+  for (const doc of documents.all()) {
+    await validateTextDocument(doc);
   }
 });
 
@@ -269,30 +286,47 @@ function isCodeLanguage(languageId: string): boolean {
 
 /**
  * Get text to analyze based on document language
+ * Uses Tree-sitter for AST-based extraction when available, falls back to regex
  */
-function getAnalyzableText(
+async function getAnalyzableText(
   text: string,
   languageId: string
-): { text: string; offset: number }[] {
+): Promise<{ text: string; offset: number }[]> {
   // For plain text/markdown/japanese - analyze entire document
   if (['plaintext', 'markdown', 'japanese'].includes(languageId)) {
     return [{ text, offset: 0 }];
   }
 
-  // For HTML - extract text content
+  // For HTML - extract text content (prefer Tree-sitter)
   if (languageId === 'html') {
+    if (isTreeSitterReady() && isLanguageSupported('html')) {
+      try {
+        const contents = await extractHtmlContentWithTreeSitter(text);
+        return contents.map((c) => ({ text: c.text, offset: c.start }));
+      } catch {
+        // Fall through to regex fallback
+      }
+    }
     const contents = extractHtmlContent(text);
     return contents.map((c) => ({ text: c.text, offset: c.start }));
   }
 
-  // For LaTeX - extract text content
+  // For LaTeX - extract text content (regex only for now)
   if (languageId === 'latex') {
     const contents = extractLatexContent(text);
     return contents.map((c) => ({ text: c.text, offset: c.start }));
   }
 
-  // For code languages - extract comments
+  // For code languages - extract comments (prefer Tree-sitter)
   if (isCodeLanguage(languageId)) {
+    if (isTreeSitterReady() && isLanguageSupported(languageId)) {
+      try {
+        const comments = await extractCommentsWithTreeSitter(text, languageId);
+        return comments.map((c) => ({ text: c.text, offset: c.start }));
+      } catch {
+        // Fall through to regex fallback
+      }
+    }
     const comments = extractComments(text, languageId);
     return comments.map((c) => ({ text: c.text, offset: c.start }));
   }
@@ -320,7 +354,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   const languageId = textDocument.languageId;
 
   // Get analyzable text segments
-  const segments = getAnalyzableText(text, languageId);
+  const segments = await getAnalyzableText(text, languageId);
 
   const allDiagnostics: Diagnostic[] = [];
 
@@ -348,17 +382,17 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
         // Adjust positions for segment offset
         const startPos = textDocument.positionAt(
           segment.offset +
-            textDocument.offsetAt({
-              line: info.start.line,
-              character: info.start.character,
-            })
+          textDocument.offsetAt({
+            line: info.start.line,
+            character: info.start.character,
+          })
         );
         const endPos = textDocument.positionAt(
           segment.offset +
-            textDocument.offsetAt({
-              line: info.end.line,
-              character: info.end.character,
-            })
+          textDocument.offsetAt({
+            line: info.end.line,
+            character: info.end.character,
+          })
         );
 
         allDiagnostics.push({
@@ -476,7 +510,7 @@ connection.languages.semanticTokens.on(async (params) => {
 
   try {
     const builder = new SemanticTokensBuilder();
-    const segments = getAnalyzableText(text, languageId);
+    const segments = await getAnalyzableText(text, languageId);
 
     for (const segment of segments) {
       const japaneseRatio = calculateJapaneseRatio(segment.text);
@@ -535,7 +569,7 @@ connection.languages.semanticTokens.onRange(async (params) => {
 
   try {
     const builder = new SemanticTokensBuilder();
-    const segments = getAnalyzableText(text, languageId);
+    const segments = await getAnalyzableText(text, languageId);
 
     for (const segment of segments) {
       const japaneseRatio = calculateJapaneseRatio(segment.text);
