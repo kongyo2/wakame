@@ -1,4 +1,8 @@
-# Cloned reference repositories
-MoZuku/
-mecab-wasm/
-ts-guide/
+node_modules/
+dist/
+out/
+*.vsix
+.vscode-test/
+coverage/
+*.log
+.DS_Store
