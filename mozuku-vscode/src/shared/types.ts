@@ -27,6 +27,19 @@ export interface Token {
   offset: number;
   /** Length in bytes */
   length: number;
+  /** Token modifiers */
+  modifiers?: TokenModifiers;
+}
+
+export interface TokenModifiers {
+  /** Is proper noun (固有名詞) */
+  proper: boolean;
+  /** Is numeric (数値) */
+  numeric: boolean;
+  /** Contains kana (仮名) */
+  kana: boolean;
+  /** Contains kanji (漢字) */
+  kanji: boolean;
 }
 
 export interface Sentence {
@@ -62,34 +75,101 @@ export interface DiagnosticInfo {
   source: string;
 }
 
+export interface CommentRange {
+  /** Start offset */
+  start: number;
+  /** End offset */
+  end: number;
+  /** Extracted text (comment markers removed) */
+  text: string;
+  /** Original text with markers */
+  original: string;
+}
+
+export interface ContentRange {
+  /** Start offset */
+  start: number;
+  /** End offset */
+  end: number;
+  /** Content type */
+  type: 'html-text' | 'latex-text' | 'comment';
+}
+
 export interface MozukuConfig {
   enable: boolean;
   targetLanguages: string[];
   minJapaneseRatio: number;
+  warningMinSeverity: 1 | 2 | 3 | 4;
+  enableWikipedia: boolean;
   rules: {
     commaLimit: boolean;
     commaLimitMax: number;
     adversativeGa: boolean;
     adversativeGaMax: number;
     duplicateParticle: boolean;
+    duplicateParticleMaxRepeat: number;
     adjacentParticles: boolean;
+    adjacentParticlesMaxRepeat: number;
     conjunctionRepeat: boolean;
+    conjunctionRepeatMax: number;
     raDropping: boolean;
+  };
+  warnings: {
+    particleDuplicate: boolean;
+    particleSequence: boolean;
+    particleMismatch: boolean;
+    sentenceStructure: boolean;
+    styleConsistency: boolean;
+    redundancy: boolean;
   };
 }
 
 export const defaultConfig: MozukuConfig = {
   enable: true,
-  targetLanguages: ['plaintext', 'markdown', 'japanese', 'latex', 'html'],
+  targetLanguages: [
+    'plaintext',
+    'markdown',
+    'japanese',
+    'latex',
+    'html',
+    'javascript',
+    'typescript',
+    'javascriptreact',
+    'typescriptreact',
+    'python',
+    'rust',
+    'c',
+    'cpp',
+  ],
   minJapaneseRatio: 0.1,
+  warningMinSeverity: 2,
+  enableWikipedia: true,
   rules: {
     commaLimit: true,
     commaLimitMax: 3,
     adversativeGa: true,
     adversativeGaMax: 1,
     duplicateParticle: true,
+    duplicateParticleMaxRepeat: 1,
     adjacentParticles: true,
+    adjacentParticlesMaxRepeat: 1,
     conjunctionRepeat: true,
+    conjunctionRepeatMax: 1,
     raDropping: true,
   },
+  warnings: {
+    particleDuplicate: true,
+    particleSequence: true,
+    particleMismatch: true,
+    sentenceStructure: false,
+    styleConsistency: false,
+    redundancy: false,
+  },
 };
+
+/** Wikipedia cache entry */
+export interface WikipediaCacheEntry {
+  summary: string | null;
+  status: 'success' | 'not_found' | 'error';
+  timestamp: number;
+}

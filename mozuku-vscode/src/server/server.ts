@@ -22,9 +22,13 @@ import {
   analyze,
   calculateJapaneseRatio,
   isTokenizerReady,
+  extractComments,
+  extractHtmlContent,
+  extractLatexContent,
 } from './analyzer.js';
 import { checkGrammar } from './grammar.js';
-import type { MozukuConfig, DiagnosticInfo } from '../shared/types.js';
+import { fetchWikipediaSummary } from './wikipedia.js';
+import type { MozukuConfig, Token } from '../shared/types.js';
 import { defaultConfig } from '../shared/types.js';
 
 // Create LSP connection
@@ -38,23 +42,24 @@ let globalConfig: MozukuConfig = { ...defaultConfig };
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 
-// Semantic token types for Japanese POS
+// Semantic token types for Japanese POS (matching MoZuku)
 const tokenTypes = [
-  'noun',
-  'verb',
-  'adjective',
-  'adverb',
-  'particle',
-  'auxiliary',
-  'conjunction',
-  'symbol',
-  'interjection',
-  'prefix',
-  'suffix',
-  'unknown',
+  'noun', // 名詞
+  'verb', // 動詞
+  'adjective', // 形容詞
+  'adverb', // 副詞
+  'particle', // 助詞
+  'auxiliary', // 助動詞
+  'conjunction', // 接続詞
+  'symbol', // 記号
+  'interjection', // 感動詞
+  'prefix', // 接頭詞
+  'suffix', // 接尾辞
+  'unknown', // 未知語
 ];
 
-const tokenModifiers = ['numeric'];
+// Token modifiers (matching MoZuku)
+const tokenModifiers = ['proper', 'numeric', 'kana', 'kanji'];
 
 const legend: SemanticTokensLegend = {
   tokenTypes,
@@ -62,23 +67,37 @@ const legend: SemanticTokensLegend = {
 };
 
 /**
- * Map Japanese POS to semantic token type
+ * Map Japanese POS to semantic token type index
  */
 function posToTokenType(pos: string): number {
   const mapping: Record<string, number> = {
-    '名詞': 0, // noun
-    '動詞': 1, // verb
-    '形容詞': 2, // adjective
-    '副詞': 3, // adverb
-    '助詞': 4, // particle
-    '助動詞': 5, // auxiliary
-    '接続詞': 6, // conjunction
-    '記号': 7, // symbol
-    '感動詞': 8, // interjection
-    '接頭詞': 9, // prefix
-    '接尾辞': 10, // suffix
+    名詞: 0,
+    動詞: 1,
+    形容詞: 2,
+    副詞: 3,
+    助詞: 4,
+    助動詞: 5,
+    接続詞: 6,
+    記号: 7,
+    感動詞: 8,
+    接頭詞: 9,
+    接尾辞: 10,
   };
-  return mapping[pos] ?? 11; // unknown
+  return mapping[pos] ?? 11;
+}
+
+/**
+ * Compute modifier bitmask from token
+ */
+function computeModifierMask(token: Token): number {
+  let mask = 0;
+  if (token.modifiers) {
+    if (token.modifiers.proper) mask |= 1 << 0;
+    if (token.modifiers.numeric) mask |= 1 << 1;
+    if (token.modifiers.kana) mask |= 1 << 2;
+    if (token.modifiers.kanji) mask |= 1 << 3;
+  }
+  return mask;
 }
 
 /**
@@ -101,6 +120,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       semanticTokensProvider: {
         legend,
         full: true,
+        range: true,
       },
     },
   };
@@ -121,7 +141,10 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
  */
 connection.onInitialized(async () => {
   if (hasConfigurationCapability) {
-    connection.client.register(DidChangeConfigurationNotification.type, undefined);
+    connection.client.register(
+      DidChangeConfigurationNotification.type,
+      undefined
+    );
   }
 
   // Initialize kuromoji tokenizer
@@ -135,7 +158,9 @@ connection.onInitialized(async () => {
       await validateTextDocument(doc);
     }
   } catch (error) {
-    connection.console.error(`MoZuku: Failed to initialize tokenizer: ${error}`);
+    connection.console.error(
+      `MoZuku: Failed to initialize tokenizer: ${error}`
+    );
   }
 });
 
@@ -144,7 +169,6 @@ connection.onInitialized(async () => {
  */
 connection.onDidChangeConfiguration(async (change) => {
   if (hasConfigurationCapability) {
-    // Reset config
     globalConfig = { ...defaultConfig };
   } else {
     globalConfig = (change.settings?.mozuku || defaultConfig) as MozukuConfig;
@@ -172,18 +196,109 @@ async function getDocumentConfig(uri: string): Promise<MozukuConfig> {
   return {
     enable: result?.enable ?? defaultConfig.enable,
     targetLanguages: result?.targetLanguages ?? defaultConfig.targetLanguages,
-    minJapaneseRatio: result?.minJapaneseRatio ?? defaultConfig.minJapaneseRatio,
+    minJapaneseRatio:
+      result?.minJapaneseRatio ?? defaultConfig.minJapaneseRatio,
+    warningMinSeverity:
+      result?.warningMinSeverity ?? defaultConfig.warningMinSeverity,
+    enableWikipedia: result?.enableWikipedia ?? defaultConfig.enableWikipedia,
     rules: {
       commaLimit: result?.rules?.commaLimit ?? defaultConfig.rules.commaLimit,
-      commaLimitMax: result?.rules?.commaLimitMax ?? defaultConfig.rules.commaLimitMax,
-      adversativeGa: result?.rules?.adversativeGa ?? defaultConfig.rules.adversativeGa,
-      adversativeGaMax: result?.rules?.adversativeGaMax ?? defaultConfig.rules.adversativeGaMax,
-      duplicateParticle: result?.rules?.duplicateParticle ?? defaultConfig.rules.duplicateParticle,
-      adjacentParticles: result?.rules?.adjacentParticles ?? defaultConfig.rules.adjacentParticles,
-      conjunctionRepeat: result?.rules?.conjunctionRepeat ?? defaultConfig.rules.conjunctionRepeat,
+      commaLimitMax:
+        result?.rules?.commaLimitMax ?? defaultConfig.rules.commaLimitMax,
+      adversativeGa:
+        result?.rules?.adversativeGa ?? defaultConfig.rules.adversativeGa,
+      adversativeGaMax:
+        result?.rules?.adversativeGaMax ?? defaultConfig.rules.adversativeGaMax,
+      duplicateParticle:
+        result?.rules?.duplicateParticle ??
+        defaultConfig.rules.duplicateParticle,
+      duplicateParticleMaxRepeat:
+        result?.rules?.duplicateParticleMaxRepeat ??
+        defaultConfig.rules.duplicateParticleMaxRepeat,
+      adjacentParticles:
+        result?.rules?.adjacentParticles ??
+        defaultConfig.rules.adjacentParticles,
+      adjacentParticlesMaxRepeat:
+        result?.rules?.adjacentParticlesMaxRepeat ??
+        defaultConfig.rules.adjacentParticlesMaxRepeat,
+      conjunctionRepeat:
+        result?.rules?.conjunctionRepeat ??
+        defaultConfig.rules.conjunctionRepeat,
+      conjunctionRepeatMax:
+        result?.rules?.conjunctionRepeatMax ??
+        defaultConfig.rules.conjunctionRepeatMax,
       raDropping: result?.rules?.raDropping ?? defaultConfig.rules.raDropping,
     },
+    warnings: {
+      particleDuplicate:
+        result?.warnings?.particleDuplicate ??
+        defaultConfig.warnings.particleDuplicate,
+      particleSequence:
+        result?.warnings?.particleSequence ??
+        defaultConfig.warnings.particleSequence,
+      particleMismatch:
+        result?.warnings?.particleMismatch ??
+        defaultConfig.warnings.particleMismatch,
+      sentenceStructure:
+        result?.warnings?.sentenceStructure ??
+        defaultConfig.warnings.sentenceStructure,
+      styleConsistency:
+        result?.warnings?.styleConsistency ??
+        defaultConfig.warnings.styleConsistency,
+      redundancy:
+        result?.warnings?.redundancy ?? defaultConfig.warnings.redundancy,
+    },
   };
+}
+
+/**
+ * Determine if language is a code language that needs comment extraction
+ */
+function isCodeLanguage(languageId: string): boolean {
+  return [
+    'javascript',
+    'typescript',
+    'javascriptreact',
+    'typescriptreact',
+    'python',
+    'rust',
+    'c',
+    'cpp',
+  ].includes(languageId);
+}
+
+/**
+ * Get text to analyze based on document language
+ */
+function getAnalyzableText(
+  text: string,
+  languageId: string
+): { text: string; offset: number }[] {
+  // For plain text/markdown/japanese - analyze entire document
+  if (['plaintext', 'markdown', 'japanese'].includes(languageId)) {
+    return [{ text, offset: 0 }];
+  }
+
+  // For HTML - extract text content
+  if (languageId === 'html') {
+    const contents = extractHtmlContent(text);
+    return contents.map((c) => ({ text: c.text, offset: c.start }));
+  }
+
+  // For LaTeX - extract text content
+  if (languageId === 'latex') {
+    const contents = extractLatexContent(text);
+    return contents.map((c) => ({ text: c.text, offset: c.start }));
+  }
+
+  // For code languages - extract comments
+  if (isCodeLanguage(languageId)) {
+    const comments = extractComments(text, languageId);
+    return comments.map((c) => ({ text: c.text, offset: c.start }));
+  }
+
+  // Default: analyze entire document
+  return [{ text, offset: 0 }];
 }
 
 /**
@@ -202,41 +317,71 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   }
 
   const text = textDocument.getText();
+  const languageId = textDocument.languageId;
 
-  // Check Japanese ratio
-  const japaneseRatio = calculateJapaneseRatio(text);
-  if (japaneseRatio < config.minJapaneseRatio) {
-    connection.sendDiagnostics({ uri: textDocument.uri, diagnostics: [] });
-    return;
-  }
+  // Get analyzable text segments
+  const segments = getAnalyzableText(text, languageId);
+
+  const allDiagnostics: Diagnostic[] = [];
 
   try {
-    // Analyze text
-    const { sentences } = analyze(text);
+    for (const segment of segments) {
+      // Check Japanese ratio for each segment
+      const japaneseRatio = calculateJapaneseRatio(segment.text);
+      if (japaneseRatio < config.minJapaneseRatio) {
+        continue;
+      }
 
-    // Run grammar checks
-    const diagnosticInfos = checkGrammar(text, sentences, config);
+      // Analyze segment
+      const { sentences } = analyze(segment.text);
 
-    // Convert to LSP diagnostics
-    const diagnostics: Diagnostic[] = diagnosticInfos.map((info: DiagnosticInfo) => ({
-      range: {
-        start: info.start,
-        end: info.end,
-      },
-      message: info.message,
-      severity: info.severity as DiagnosticSeverity,
-      code: info.code,
-      source: info.source,
-    }));
+      // Run grammar checks
+      const diagnosticInfos = checkGrammar(segment.text, sentences, config);
 
-    connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+      // Filter by severity
+      const filteredDiagnostics = diagnosticInfos.filter(
+        (d) => d.severity <= config.warningMinSeverity
+      );
+
+      // Convert to LSP diagnostics with offset adjustment
+      for (const info of filteredDiagnostics) {
+        // Adjust positions for segment offset
+        const startPos = textDocument.positionAt(
+          segment.offset +
+            textDocument.offsetAt({
+              line: info.start.line,
+              character: info.start.character,
+            })
+        );
+        const endPos = textDocument.positionAt(
+          segment.offset +
+            textDocument.offsetAt({
+              line: info.end.line,
+              character: info.end.character,
+            })
+        );
+
+        allDiagnostics.push({
+          range: { start: startPos, end: endPos },
+          message: info.message,
+          severity: info.severity as DiagnosticSeverity,
+          code: info.code,
+          source: info.source,
+        });
+      }
+    }
+
+    connection.sendDiagnostics({
+      uri: textDocument.uri,
+      diagnostics: allDiagnostics,
+    });
   } catch (error) {
     connection.console.error(`MoZuku: Analysis error: ${error}`);
   }
 }
 
 /**
- * Handle hover requests
+ * Handle hover requests with Wikipedia integration
  */
 connection.onHover(async (params) => {
   if (!isTokenizerReady()) {
@@ -261,12 +406,15 @@ connection.onHover(async (params) => {
 
     // Find token at position
     for (const token of tokens) {
-      if (offset >= token.offset && offset < token.offset + token.surface.length) {
-        const hoverContent = [
+      if (
+        offset >= token.offset &&
+        offset < token.offset + token.surface.length
+      ) {
+        const hoverLines = [
           `**${token.surface}**`,
           '',
-          `| 項目 | 値 |`,
-          `|------|------|`,
+          '| 項目 | 値 |',
+          '|------|------|',
           `| 品詞 | ${token.pos} |`,
           `| 品詞細分類1 | ${token.posDetail1} |`,
           `| 品詞細分類2 | ${token.posDetail2} |`,
@@ -276,12 +424,24 @@ connection.onHover(async (params) => {
           `| 基本形 | ${token.baseForm} |`,
           `| 読み | ${token.reading} |`,
           `| 発音 | ${token.pronunciation} |`,
-        ].join('\n');
+        ];
+
+        // Add Wikipedia summary for nouns
+        if (config.enableWikipedia && token.pos === '名詞' && token.baseForm) {
+          try {
+            const summary = await fetchWikipediaSummary(token.baseForm);
+            if (summary) {
+              hoverLines.push('', '---', '', '**Wikipedia**', '', summary);
+            }
+          } catch {
+            // Ignore Wikipedia errors
+          }
+        }
 
         return {
           contents: {
             kind: 'markdown',
-            value: hoverContent,
+            value: hoverLines.join('\n'),
           },
         };
       }
@@ -294,7 +454,7 @@ connection.onHover(async (params) => {
 });
 
 /**
- * Handle semantic tokens request
+ * Handle semantic tokens request (full document)
  */
 connection.languages.semanticTokens.on(async (params) => {
   if (!isTokenizerReady()) {
@@ -312,32 +472,98 @@ connection.languages.semanticTokens.on(async (params) => {
   }
 
   const text = document.getText();
-  const japaneseRatio = calculateJapaneseRatio(text);
-  if (japaneseRatio < config.minJapaneseRatio) {
-    return { data: [] };
-  }
+  const languageId = document.languageId;
 
   try {
-    const { tokens } = analyze(text);
     const builder = new SemanticTokensBuilder();
+    const segments = getAnalyzableText(text, languageId);
 
-    for (const token of tokens) {
-      const pos = document.positionAt(token.offset);
-      const tokenType = posToTokenType(token.pos);
-      const tokenModifier = token.posDetail1 === '数' ? 1 : 0; // numeric modifier
+    for (const segment of segments) {
+      const japaneseRatio = calculateJapaneseRatio(segment.text);
+      if (japaneseRatio < config.minJapaneseRatio) {
+        continue;
+      }
 
-      builder.push(
-        pos.line,
-        pos.character,
-        token.surface.length,
-        tokenType,
-        tokenModifier
-      );
+      const { tokens } = analyze(segment.text);
+
+      for (const token of tokens) {
+        // Calculate position in original document
+        const absoluteOffset = segment.offset + token.offset;
+        const pos = document.positionAt(absoluteOffset);
+        const tokenType = posToTokenType(token.pos);
+        const tokenModifier = computeModifierMask(token);
+
+        builder.push(
+          pos.line,
+          pos.character,
+          token.surface.length,
+          tokenType,
+          tokenModifier
+        );
+      }
     }
 
     return builder.build();
   } catch (error) {
     connection.console.error(`MoZuku: Semantic tokens error: ${error}`);
+    return { data: [] };
+  }
+});
+
+/**
+ * Handle semantic tokens range request
+ */
+connection.languages.semanticTokens.onRange(async (params) => {
+  // For range requests, we still analyze the full document for simplicity
+  // A more optimized implementation would only analyze the requested range
+  if (!isTokenizerReady()) {
+    return { data: [] };
+  }
+
+  const document = documents.get(params.textDocument.uri);
+  if (!document) {
+    return { data: [] };
+  }
+
+  const config = await getDocumentConfig(document.uri);
+  if (!config.enable) {
+    return { data: [] };
+  }
+
+  const text = document.getText();
+  const languageId = document.languageId;
+
+  try {
+    const builder = new SemanticTokensBuilder();
+    const segments = getAnalyzableText(text, languageId);
+
+    for (const segment of segments) {
+      const japaneseRatio = calculateJapaneseRatio(segment.text);
+      if (japaneseRatio < config.minJapaneseRatio) {
+        continue;
+      }
+
+      const { tokens } = analyze(segment.text);
+
+      for (const token of tokens) {
+        const absoluteOffset = segment.offset + token.offset;
+        const pos = document.positionAt(absoluteOffset);
+        const tokenType = posToTokenType(token.pos);
+        const tokenModifier = computeModifierMask(token);
+
+        builder.push(
+          pos.line,
+          pos.character,
+          token.surface.length,
+          tokenType,
+          tokenModifier
+        );
+      }
+    }
+
+    return builder.build();
+  } catch (error) {
+    connection.console.error(`MoZuku: Semantic tokens range error: ${error}`);
     return { data: [] };
   }
 });

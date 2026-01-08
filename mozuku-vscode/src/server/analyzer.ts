@@ -4,13 +4,25 @@
 
 import kuromoji from 'kuromoji';
 import * as path from 'path';
-import type { Token, Sentence, AnalysisResult } from '../shared/types.js';
+import type {
+  Token,
+  Sentence,
+  AnalysisResult,
+  TokenModifiers,
+  CommentRange,
+} from '../shared/types.js';
 
 type KuromojiToken = kuromoji.IpadicFeatures;
 type Tokenizer = kuromoji.Tokenizer<KuromojiToken>;
 
 let tokenizer: Tokenizer | null = null;
 let initPromise: Promise<Tokenizer> | null = null;
+
+// Character type detection regexes
+const HIRAGANA_REGEX = /[\u3040-\u309F]/;
+const KATAKANA_REGEX = /[\u30A0-\u30FF]/;
+const KANJI_REGEX = /[\u4E00-\u9FFF]/;
+const JAPANESE_REGEX = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3000-\u303F]/g;
 
 /**
  * Get the path to kuromoji dictionary
@@ -26,7 +38,14 @@ function getDictionaryPath(): string {
   }
 
   // Fallback to node_modules during development
-  const devPath = path.join(__dirname, '..', '..', 'node_modules', 'kuromoji', 'dict');
+  const devPath = path.join(
+    __dirname,
+    '..',
+    '..',
+    'node_modules',
+    'kuromoji',
+    'dict'
+  );
   if (fs.existsSync(devPath)) {
     return devPath;
   }
@@ -65,11 +84,35 @@ export async function initializeTokenizer(): Promise<void> {
 }
 
 /**
+ * Compute token modifiers based on POS and surface form
+ */
+function computeModifiers(kt: KuromojiToken): TokenModifiers {
+  const surface = kt.surface_form;
+
+  // Check if proper noun (固有名詞)
+  const proper = kt.pos_detail_1 === '固有名詞';
+
+  // Check if numeric (数)
+  const numeric =
+    kt.pos_detail_1 === '数' ||
+    kt.pos_detail_2 === '数' ||
+    /^[0-9０-９]+$/.test(surface);
+
+  // Check character types
+  const kana = HIRAGANA_REGEX.test(surface) || KATAKANA_REGEX.test(surface);
+  const kanji = KANJI_REGEX.test(surface);
+
+  return { proper, numeric, kana, kanji };
+}
+
+/**
  * Tokenize Japanese text
  */
 export function tokenize(text: string): Token[] {
   if (!tokenizer) {
-    throw new Error('Tokenizer not initialized. Call initializeTokenizer() first.');
+    throw new Error(
+      'Tokenizer not initialized. Call initializeTokenizer() first.'
+    );
   }
 
   const kuromojiTokens = tokenizer.tokenize(text);
@@ -95,6 +138,7 @@ export function tokenize(text: string): Token[] {
       pronunciation: kt.pronunciation ?? '',
       offset,
       length: Buffer.byteLength(kt.surface_form, 'utf-8'),
+      modifiers: computeModifiers(kt),
     });
 
     currentOffset = offset + kt.surface_form.length;
@@ -170,14 +214,7 @@ export function analyze(text: string): AnalysisResult {
 export function calculateJapaneseRatio(text: string): number {
   if (text.length === 0) return 0;
 
-  // Japanese character ranges:
-  // Hiragana: 3040-309F
-  // Katakana: 30A0-30FF
-  // CJK Unified Ideographs: 4E00-9FFF
-  // Fullwidth punctuation: 3000-303F
-  const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3000-\u303F]/g;
-  const matches = text.match(japaneseRegex) || [];
-
+  const matches = text.match(JAPANESE_REGEX) || [];
   return matches.length / text.length;
 }
 
@@ -186,4 +223,113 @@ export function calculateJapaneseRatio(text: string): number {
  */
 export function isTokenizerReady(): boolean {
   return tokenizer !== null;
+}
+
+/**
+ * Extract comments from source code based on language
+ */
+export function extractComments(text: string, languageId: string): CommentRange[] {
+  const comments: CommentRange[] = [];
+
+  // Define comment patterns for each language
+  const patterns: Record<string, RegExp[]> = {
+    javascript: [/\/\/(.*)$/gm, /\/\*[\s\S]*?\*\//g],
+    typescript: [/\/\/(.*)$/gm, /\/\*[\s\S]*?\*\//g],
+    javascriptreact: [/\/\/(.*)$/gm, /\/\*[\s\S]*?\*\//g],
+    typescriptreact: [/\/\/(.*)$/gm, /\/\*[\s\S]*?\*\//g],
+    python: [/#(.*)$/gm, /'''[\s\S]*?'''/g, /"""[\s\S]*?"""/g],
+    rust: [/\/\/(.*)$/gm, /\/\*[\s\S]*?\*\//g],
+    c: [/\/\/(.*)$/gm, /\/\*[\s\S]*?\*\//g],
+    cpp: [/\/\/(.*)$/gm, /\/\*[\s\S]*?\*\//g],
+    html: [/<!--[\s\S]*?-->/g],
+    latex: [/%(.*)$/gm],
+  };
+
+  const langPatterns = patterns[languageId];
+  if (!langPatterns) {
+    return comments;
+  }
+
+  for (const pattern of langPatterns) {
+    let match;
+    const regex = new RegExp(pattern.source, pattern.flags);
+    while ((match = regex.exec(text)) !== null) {
+      const original = match[0];
+      // Remove comment markers
+      let extracted = original
+        .replace(/^\/\/\s*/, '')
+        .replace(/^\/\*\s*/, '')
+        .replace(/\s*\*\/$/, '')
+        .replace(/^#\s*/, '')
+        .replace(/^%\s*/, '')
+        .replace(/^<!--\s*/, '')
+        .replace(/\s*-->$/, '')
+        .replace(/^'''\s*/, '')
+        .replace(/\s*'''$/, '')
+        .replace(/^"""\s*/, '')
+        .replace(/\s*"""$/, '');
+
+      // Only include if it contains Japanese characters
+      if (calculateJapaneseRatio(extracted) > 0.1) {
+        comments.push({
+          start: match.index,
+          end: match.index + original.length,
+          text: extracted,
+          original,
+        });
+      }
+    }
+  }
+
+  return comments;
+}
+
+/**
+ * Extract text content from HTML (text inside tags)
+ */
+export function extractHtmlContent(text: string): CommentRange[] {
+  const contents: CommentRange[] = [];
+  // Match text between tags, excluding script and style content
+  const tagPattern = />([^<]+)</g;
+  let match;
+
+  while ((match = tagPattern.exec(text)) !== null) {
+    const content = match[1].trim();
+    if (content && calculateJapaneseRatio(content) > 0.1) {
+      contents.push({
+        start: match.index + 1,
+        end: match.index + 1 + match[1].length,
+        text: content,
+        original: match[1],
+      });
+    }
+  }
+
+  return contents;
+}
+
+/**
+ * Extract text content from LaTeX (text outside commands and math)
+ */
+export function extractLatexContent(text: string): CommentRange[] {
+  const contents: CommentRange[] = [];
+  // Simple pattern: text that's not a command or in math mode
+  // This is a simplified version - real LaTeX parsing would be more complex
+  const textPattern = /(?:^|[^\\])([^\\$%{}]+)/gm;
+  let match;
+
+  while ((match = textPattern.exec(text)) !== null) {
+    const content = match[1]?.trim();
+    if (content && calculateJapaneseRatio(content) > 0.1) {
+      const startOffset = match.index + (match[0].length - match[1].length);
+      contents.push({
+        start: startOffset,
+        end: startOffset + match[1].length,
+        text: content,
+        original: match[1],
+      });
+    }
+  }
+
+  return contents;
 }
