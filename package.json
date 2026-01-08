@@ -30,8 +30,14 @@
     "languages": [
       {
         "id": "japanese",
-        "aliases": ["Japanese", "日本語"],
-        "extensions": [".ja.txt", ".ja.md"],
+        "aliases": [
+          "Japanese",
+          "日本語"
+        ],
+        "extensions": [
+          ".ja.txt",
+          ".ja.md"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -46,15 +52,31 @@
         },
         "wakame.targetLanguages": {
           "type": "array",
-          "default": ["plaintext", "markdown", "japanese", "latex", "html", "javascript", "typescript", "javascriptreact", "typescriptreact", "python", "rust", "c", "cpp"],
-          "items": { "type": "string" },
+          "default": [
+            "plaintext",
+            "markdown",
+            "japanese",
+            "latex",
+            "html",
+            "javascript",
+            "typescript",
+            "javascriptreact",
+            "typescriptreact",
+            "python",
+            "rust",
+            "c",
+            "cpp"
+          ],
+          "items": {
+            "type": "string"
+          },
           "description": "List of language IDs to analyze"
         },
         "wakame.minJapaneseRatio": {
           "type": "number",
           "default": 0.1,
-          "minimum": 0.0,
-          "maximum": 1.0,
+          "minimum": 0,
+          "maximum": 1,
           "description": "Minimum ratio of Japanese characters required for analysis"
         },
         "wakame.warningMinSeverity": {
@@ -62,8 +84,18 @@
           "default": 2,
           "minimum": 1,
           "maximum": 4,
-          "enum": [1, 2, 3, 4],
-          "enumDescriptions": ["Error only", "Warning and above", "Information and above", "All including hints"],
+          "enum": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "enumDescriptions": [
+            "Error only",
+            "Warning and above",
+            "Information and above",
+            "All including hints"
+          ],
           "description": "Minimum severity level for warnings (1=Error, 2=Warning, 3=Information, 4=Hint)"
         },
         "wakame.enableWikipedia": {
@@ -195,23 +227,68 @@
       }
     ],
     "semanticTokenTypes": [
-      { "id": "noun", "description": "名詞 (Noun)" },
-      { "id": "verb", "description": "動詞 (Verb)" },
-      { "id": "adjective", "description": "形容詞 (Adjective)" },
-      { "id": "adverb", "description": "副詞 (Adverb)" },
-      { "id": "particle", "description": "助詞 (Particle)" },
-      { "id": "auxiliary", "description": "助動詞 (Auxiliary verb)" },
-      { "id": "conjunction", "description": "接続詞 (Conjunction)" },
-      { "id": "symbol", "description": "記号 (Symbol)" },
-      { "id": "interjection", "description": "感動詞 (Interjection)" },
-      { "id": "prefix", "description": "接頭詞 (Prefix)" },
-      { "id": "suffix", "description": "接尾辞 (Suffix)" }
+      {
+        "id": "noun",
+        "description": "名詞 (Noun)"
+      },
+      {
+        "id": "verb",
+        "description": "動詞 (Verb)"
+      },
+      {
+        "id": "adjective",
+        "description": "形容詞 (Adjective)"
+      },
+      {
+        "id": "adverb",
+        "description": "副詞 (Adverb)"
+      },
+      {
+        "id": "particle",
+        "description": "助詞 (Particle)"
+      },
+      {
+        "id": "auxiliary",
+        "description": "助動詞 (Auxiliary verb)"
+      },
+      {
+        "id": "conjunction",
+        "description": "接続詞 (Conjunction)"
+      },
+      {
+        "id": "symbol",
+        "description": "記号 (Symbol)"
+      },
+      {
+        "id": "interjection",
+        "description": "感動詞 (Interjection)"
+      },
+      {
+        "id": "prefix",
+        "description": "接頭詞 (Prefix)"
+      },
+      {
+        "id": "suffix",
+        "description": "接尾辞 (Suffix)"
+      }
     ],
     "semanticTokenModifiers": [
-      { "id": "proper", "description": "固有名詞 (Proper noun)" },
-      { "id": "numeric", "description": "数値 (Numeric)" },
-      { "id": "kana", "description": "仮名 (Kana)" },
-      { "id": "kanji", "description": "漢字 (Kanji)" }
+      {
+        "id": "proper",
+        "description": "固有名詞 (Proper noun)"
+      },
+      {
+        "id": "numeric",
+        "description": "数値 (Numeric)"
+      },
+      {
+        "id": "kana",
+        "description": "仮名 (Kana)"
+      },
+      {
+        "id": "kanji",
+        "description": "漢字 (Kanji)"
+      }
     ]
   },
   "scripts": {
@@ -236,6 +313,7 @@
     "@types/kuromoji": "^0.1.3",
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.7.1",
     "esbuild": "^0.20.0",
     "oxlint": "^0.2.0",
     "typescript": "^5.3.0",
