@@ -33,7 +33,7 @@ const serverOptions = {
   ...commonOptions,
   entryPoints: ['src/server/server.ts'],
   outfile: 'dist/server/server.js',
-  external: ['vscode'],
+  external: ['vscode', 'mecab-wasm'],
 };
 
 /**
@@ -47,6 +47,10 @@ function copyWasmFiles() {
   const wasmFiles = [
     // Tree-sitter runtime
     { src: 'node_modules/web-tree-sitter/web-tree-sitter.wasm', dest: 'web-tree-sitter.wasm' },
+    // MeCab WASM files
+    { src: 'node_modules/mecab-wasm/lib/libmecab.wasm', dest: 'libmecab.wasm' },
+    { src: 'node_modules/mecab-wasm/lib/libmecab.data', dest: 'libmecab.data' },
+    { src: 'node_modules/mecab-wasm/lib/libmecab.js', dest: 'libmecab.js' },
     // Language grammars
     { src: 'node_modules/tree-sitter-javascript/tree-sitter-javascript.wasm', dest: 'tree-sitter-javascript.wasm' },
     { src: 'node_modules/tree-sitter-typescript/tree-sitter-typescript.wasm', dest: 'tree-sitter-typescript.wasm' },

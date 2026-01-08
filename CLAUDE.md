@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Wakame is a VSCode extension that provides Japanese text linting and proofreading via the Language Server Protocol (LSP). It uses kuromoji.js for morphological analysis and Tree-sitter for AST-based comment extraction from source code files.
+Wakame is a VSCode extension that provides Japanese text linting and proofreading via the Language Server Protocol (LSP). It uses MeCab (via mecab-wasm) for high-accuracy morphological analysis and Tree-sitter for AST-based comment extraction from source code files.
 
 ## Commands
 
@@ -33,7 +33,7 @@ The extension follows the standard VSCode LSP architecture:
 
 1. **Text Extraction** (`analyzer.ts`, `treeSitterExtractor.ts`): For code files, extracts Japanese text from comments using Tree-sitter AST parsing (with regex fallback). For plaintext/markdown, analyzes entire document.
 
-2. **Tokenization** (`analyzer.ts`): Uses kuromoji.js to tokenize Japanese text into morphemes with POS (part-of-speech) tagging.
+2. **Tokenization** (`analyzer.ts`, `mecabAnalyzer.ts`): Uses MeCab WASM for high-accuracy morphological analysis with IPADIC dictionary.
 
 3. **Grammar Checking** (`grammar.ts`): Runs rule-based checks on tokenized sentences. Rules are inspired by [MoZuku](https://github.com/t3tra-dev/MoZuku).
 
@@ -56,6 +56,6 @@ All shared interfaces are in `src/shared/types.ts`. Key types:
 - `WakameConfig`: Extension configuration schema
 - `DiagnosticInfo`: Linting diagnostic format
 
-### Dictionary Files
+### MeCab WASM
 
-The `dict/` directory contains compressed kuromoji dictionary files (`.dat.gz`). These are loaded by the server at startup.
+The extension uses mecab-wasm with bundled IPADIC dictionary for morphological analysis. WASM files are copied to `dist/wasm/` during build.

@@ -1,10 +1,8 @@
 /**
- * Japanese text analyzer using kuromoji
+ * Japanese text analyzer using MeCab WASM
  * With Tree-sitter based AST analysis for high-precision comment extraction
  */
 
-import kuromoji from 'kuromoji';
-import * as path from 'path';
 import type {
   Token,
   Sentence,
@@ -12,6 +10,12 @@ import type {
   TokenModifiers,
   CommentRange,
 } from '../shared/types.js';
+import {
+  initializeMecab,
+  mecabTokenize,
+  isMecabReady,
+  type MecabToken,
+} from './mecabAnalyzer.js';
 
 // Re-export Tree-sitter functions
 export {
@@ -23,12 +27,6 @@ export {
   getSupportedLanguages,
 } from './treeSitterExtractor.js';
 
-type KuromojiToken = kuromoji.IpadicFeatures;
-type Tokenizer = kuromoji.Tokenizer<KuromojiToken>;
-
-let tokenizer: Tokenizer | null = null;
-let initPromise: Promise<Tokenizer> | null = null;
-
 // Character type detection regexes
 const HIRAGANA_REGEX = /[\u3040-\u309F]/;
 const KATAKANA_REGEX = /[\u30A0-\u30FF]/;
@@ -36,77 +34,25 @@ const KANJI_REGEX = /[\u4E00-\u9FFF]/;
 const JAPANESE_REGEX = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3000-\u303F]/g;
 
 /**
- * Get the path to kuromoji dictionary
- * In production, this is bundled with the extension
- */
-function getDictionaryPath(): string {
-  const fs = require('fs');
-
-  // Try bundled dictionary first (relative to dist/server/server.js -> dict/)
-  const bundledPath = path.join(__dirname, '..', '..', 'dict');
-  if (fs.existsSync(bundledPath)) {
-    return bundledPath;
-  }
-
-  // Fallback to node_modules during development
-  const devPath = path.join(
-    __dirname,
-    '..',
-    '..',
-    'node_modules',
-    'kuromoji',
-    'dict'
-  );
-  if (fs.existsSync(devPath)) {
-    return devPath;
-  }
-
-  // Last resort: check current working directory
-  const cwdPath = path.resolve(process.cwd(), 'node_modules', 'kuromoji', 'dict');
-  return cwdPath;
-}
-
-/**
- * Initialize the kuromoji tokenizer
+ * Initialize the MeCab tokenizer
  */
 export async function initializeTokenizer(): Promise<void> {
-  if (tokenizer) {
-    return;
-  }
-
-  if (initPromise) {
-    await initPromise;
-    return;
-  }
-
-  initPromise = new Promise<Tokenizer>((resolve, reject) => {
-    const dicPath = getDictionaryPath();
-    kuromoji.builder({ dicPath }).build((err, builtTokenizer) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      tokenizer = builtTokenizer;
-      resolve(builtTokenizer);
-    });
-  });
-
-  await initPromise;
+  await initializeMecab();
 }
 
 /**
  * Compute token modifiers based on POS and surface form
  */
-function computeModifiers(kt: KuromojiToken): TokenModifiers {
-  const surface = kt.surface_form;
+function computeModifiers(mt: MecabToken): TokenModifiers {
+  const surface = mt.word;
 
   // Check if proper noun (固有名詞)
-  const proper = kt.pos_detail_1 === '固有名詞';
+  const proper = mt.pos_detail1 === '固有名詞';
 
   // Check if numeric (数)
   const numeric =
-    kt.pos_detail_1 === '数' ||
-    kt.pos_detail_2 === '数' ||
+    mt.pos_detail1 === '数' ||
+    mt.pos_detail2 === '数' ||
     /^[0-9０-９]+$/.test(surface);
 
   // Check character types
@@ -117,42 +63,42 @@ function computeModifiers(kt: KuromojiToken): TokenModifiers {
 }
 
 /**
- * Tokenize Japanese text
+ * Tokenize Japanese text using MeCab
  */
 export function tokenize(text: string): Token[] {
-  if (!tokenizer) {
+  if (!isMecabReady()) {
     throw new Error(
       'Tokenizer not initialized. Call initializeTokenizer() first.'
     );
   }
 
-  const kuromojiTokens = tokenizer.tokenize(text);
+  const mecabTokens = mecabTokenize(text);
   const tokens: Token[] = [];
 
   let currentOffset = 0;
 
-  for (const kt of kuromojiTokens) {
+  for (const mt of mecabTokens) {
     // Find the position of this token in the original text
-    const tokenStart = text.indexOf(kt.surface_form, currentOffset);
+    const tokenStart = text.indexOf(mt.word, currentOffset);
     const offset = tokenStart >= 0 ? tokenStart : currentOffset;
 
     tokens.push({
-      surface: kt.surface_form,
-      pos: kt.pos ?? '*',
-      posDetail1: kt.pos_detail_1 ?? '*',
-      posDetail2: kt.pos_detail_2 ?? '*',
-      posDetail3: kt.pos_detail_3 ?? '*',
-      conjugationType: kt.conjugated_type ?? '*',
-      conjugationForm: kt.conjugated_form ?? '*',
-      baseForm: kt.basic_form ?? kt.surface_form,
-      reading: kt.reading ?? '',
-      pronunciation: kt.pronunciation ?? '',
+      surface: mt.word,
+      pos: mt.pos ?? '*',
+      posDetail1: mt.pos_detail1 ?? '*',
+      posDetail2: mt.pos_detail2 ?? '*',
+      posDetail3: mt.pos_detail3 ?? '*',
+      conjugationType: mt.conjugation1 ?? '*',
+      conjugationForm: mt.conjugation2 ?? '*',
+      baseForm: mt.dictionary_form ?? mt.word,
+      reading: mt.reading ?? '',
+      pronunciation: mt.pronunciation ?? '',
       offset,
-      length: Buffer.byteLength(kt.surface_form, 'utf-8'),
-      modifiers: computeModifiers(kt),
+      length: Buffer.byteLength(mt.word, 'utf-8'),
+      modifiers: computeModifiers(mt),
     });
 
-    currentOffset = offset + kt.surface_form.length;
+    currentOffset = offset + mt.word.length;
   }
 
   return tokens;
@@ -233,7 +179,7 @@ export function calculateJapaneseRatio(text: string): number {
  * Check if tokenizer is ready
  */
 export function isTokenizerReady(): boolean {
-  return tokenizer !== null;
+  return isMecabReady();
 }
 
 /**
